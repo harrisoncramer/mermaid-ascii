@@ -7,6 +7,7 @@ import (
 
 	"github.com/AlexanderGrooff/mermaid-ascii/pkg/diagram"
 	"github.com/AlexanderGrooff/mermaid-ascii/pkg/diagram/testutil"
+	"github.com/gookit/color"
 	"github.com/mattn/go-runewidth"
 )
 
@@ -103,4 +104,25 @@ func maxDisplayWidth(output string) int {
 		width = max(width, runewidth.StringWidth(line))
 	}
 	return width
+}
+
+func TestMaxWidthIgnoresColourEscapes(t *testing.T) {
+	previous := color.ForceOpenColor()
+	t.Cleanup(func() { color.ForceSetColorLevel(previous) })
+
+	config := diagram.NewTestConfig(false, "cli")
+	config.MaxWidth = 40
+	output, status, err := RenderDiagramWithStatus("flowchart LR\n  classDef hot color:#ff0000\n  A[Start]:::hot --> B[Done]\n", config)
+	if err != nil {
+		t.Fatalf("RenderDiagramWithStatus() error = %v", err)
+	}
+	if !strings.Contains(output, "\x1b[") {
+		t.Fatalf("output carries no colour escapes:\n%s", output)
+	}
+	if status.Compacted || !status.Met {
+		t.Fatalf("status = %+v, want an uncompacted fit", status)
+	}
+	if want := maxDisplayWidth(ansiEscape.ReplaceAllString(output, "")); status.Width != want {
+		t.Fatalf("status width = %d, want %d", status.Width, want)
+	}
 }

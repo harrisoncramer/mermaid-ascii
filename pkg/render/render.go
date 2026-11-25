@@ -2,6 +2,7 @@ package render
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/AlexanderGrooff/mermaid-ascii/pkg/diagram"
@@ -60,9 +61,12 @@ func RenderDiagramWithStatus(input string, config *diagram.Config) (string, Widt
 	return output, status, nil
 }
 
+// ansiEscape matches the terminal escape sequences that colour output and take no columns.
+var ansiEscape = regexp.MustCompile(`\x1b\[[0-?]*[ -/]*[@-~]`)
+
 func displayWidth(output string) int {
 	width := 0
-	for _, line := range strings.Split(output, "\n") {
+	for _, line := range strings.Split(ansiEscape.ReplaceAllString(output, ""), "\n") {
 		if lineWidth := runewidth.StringWidth(line); lineWidth > width {
 			width = lineWidth
 		}
