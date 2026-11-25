@@ -182,7 +182,7 @@ func (g *graph) setSubgraphs(textSubgraphs []*textSubgraph) {
 	log.Debugf("Set %d subgraphs", len(g.subgraphs))
 }
 
-func (g *graph) createMapping() {
+func (g *graph) createMapping() error {
 	// Set mapping coord for every node in the graph.
 	// Keyed by level so it grows with the graph instead of assuming a fixed
 	// number of levels; a missing key reads as the zero value.
@@ -315,7 +315,9 @@ func (g *graph) createMapping() {
 		if e.fanout {
 			continue
 		}
-		g.determinePath(e)
+		if err := g.determinePath(e); err != nil {
+			return err
+		}
 		g.increaseGridSizeForPath(e.path)
 		g.determineLabelLine(e)
 	}
@@ -335,6 +337,7 @@ func (g *graph) createMapping() {
 
 	// Offset everything if subgraphs have negative coordinates
 	g.offsetDrawingForSubgraphs()
+	return nil
 }
 
 func (g *graph) calculateSubgraphBoundingBoxes() {

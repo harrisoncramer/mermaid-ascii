@@ -43,7 +43,7 @@ type edge struct {
 	endDir          direction
 }
 
-func (g *graph) determinePath(e *edge) {
+func (g *graph) determinePath(e *edge) error {
 	key := newEdgePair(e.from.index, e.to.index)
 	duplicateIndex := g.edgeCounts[key]
 
@@ -55,60 +55,38 @@ func (g *graph) determinePath(e *edge) {
 			e.endDir = endDir
 			e.path = mergePath(path)
 			g.edgeCounts[key]++
-			return
+			return nil
 		}
 	}
 
-	// Get both paths and use least amount of steps
-	var preferredPath, alternativePath []gridCoord
-	var from, to gridCoord
-	var err error
+	// Get both paths and use the one with the least steps, skipping a path
+	// that can't be found.
 	preferredDir, preferredOppositeDir, alternativeDir, alternativeOppositeDir := g.determineStartAndEndDir(e)
-
-	from = e.from.gridCoord.Direction(preferredDir)
-	to = e.to.gridCoord.Direction(preferredOppositeDir)
-	log.Debugf("Determining preferred path from %v (direction %v) to %v (direction %v)", *e.from, preferredDir, *e.to, preferredOppositeDir)
-
-	// Get preferred path
-	preferredPath, err = g.getPath(from, to)
-	if err != nil {
-		fmt.Printf("Error getting path from %v to %v: %v", from, to, err)
-		// This is a big assumption, but if we can't get the preferred path, we assume the alternative path is better
-		e.startDir = alternativeDir
-		e.endDir = alternativeOppositeDir
-		e.path = alternativePath
-		return
+	preferredPath, preferredErr := g.getPath(e.from.gridCoord.Direction(preferredDir), e.to.gridCoord.Direction(preferredOppositeDir))
+	alternativePath, alternativeErr := g.getPath(e.from.gridCoord.Direction(alternativeDir), e.to.gridCoord.Direction(alternativeOppositeDir))
+	if preferredErr != nil {
+		log.Debugf("No preferred path from %v (direction %v) to %v (direction %v): %v", *e.from, preferredDir, *e.to, preferredOppositeDir, preferredErr)
 	}
-	preferredPath = mergePath(preferredPath)
-
-	// Alternative path
-	from = e.from.gridCoord.Direction(alternativeDir)
-	to = e.to.gridCoord.Direction(alternativeOppositeDir)
-	log.Debugf("Determining alternative path from %v (direction %v) to %v (direction %v)", *e.from, alternativeDir, *e.to, alternativeOppositeDir)
-
-	alternativePath, err = g.getPath(from, to)
-	if err != nil {
-		fmt.Printf("Error getting path from %v to %v: %v", from, to, err)
-		e.startDir = preferredDir
-		e.endDir = preferredOppositeDir
-		e.path = preferredPath
+	if alternativeErr != nil {
+		log.Debugf("No alternative path from %v (direction %v) to %v (direction %v): %v", *e.from, alternativeDir, *e.to, alternativeOppositeDir, alternativeErr)
 	}
-	alternativePath = mergePath(alternativePath)
 
-	nrStepsPreferred := len(preferredPath)
-	nrStepsAlternative := len(alternativePath)
-	if nrStepsPreferred <= nrStepsAlternative {
-		log.Debugf("Using preferred path with %v steps instead of alternative path with %v steps", nrStepsPreferred, nrStepsAlternative)
+	if preferredErr != nil && alternativeErr != nil {
+		return fmt.Errorf("no path for the edge from %s to %s: %w", e.from.name, e.to.name, preferredErr)
+	}
+
+	preferredPath, alternativePath = mergePath(preferredPath), mergePath(alternativePath)
+	if alternativeErr != nil || (preferredErr == nil && len(preferredPath) <= len(alternativePath)) {
 		e.startDir = preferredDir
 		e.endDir = preferredOppositeDir
 		e.path = preferredPath
 	} else {
-		log.Debugf("Using alternative path with %v steps instead of alternative path with %v steps", nrStepsAlternative, nrStepsPreferred)
 		e.startDir = alternativeDir
 		e.endDir = alternativeOppositeDir
 		e.path = alternativePath
 	}
 	g.edgeCounts[key]++
+	return nil
 }
 
 func (g *graph) parallelDirections(e *edge, duplicateIndex int) (direction, direction, bool) {

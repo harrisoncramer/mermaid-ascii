@@ -87,7 +87,10 @@ func (gd *GraphDiagram) Render(config *diagram.Config) (string, error) {
 
 	gd.widthStatus = WidthStatus{Requested: config.MaxWidth > 0, Limit: config.MaxWidth}
 	gd.properties.Apply(config)
-	output := graph.Draw(gd.properties)
+	output, err := graph.Draw(gd.properties)
+	if err != nil {
+		return "", err
+	}
 	gd.widthStatus.Width = displayWidth(output)
 	gd.widthStatus.Met = !gd.widthStatus.Requested || gd.widthStatus.Width <= gd.widthStatus.Limit
 	if gd.widthStatus.Requested && !gd.widthStatus.Met {
@@ -95,7 +98,10 @@ func (gd *GraphDiagram) Render(config *diagram.Config) (string, error) {
 		compactConfig.PaddingBetweenX = 1
 		compactConfig.PaddingBetweenY = 1
 		gd.properties.Apply(&compactConfig)
-		output = graph.Draw(gd.properties)
+		output, err = graph.Draw(gd.properties)
+		if err != nil {
+			return "", err
+		}
 		gd.widthStatus.Compacted = true
 		gd.widthStatus.Width = displayWidth(output)
 		gd.widthStatus.Met = gd.widthStatus.Width <= gd.widthStatus.Limit

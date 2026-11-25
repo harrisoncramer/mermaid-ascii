@@ -65,6 +65,7 @@ func (g *graph) getPath(from gridCoord, to gridCoord) ([]gridCoord, error) {
 	cameFrom := map[gridCoord]*gridCoord{from: nil}
 
 	directions := []gridCoord{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}
+	limit := g.findSearchLimit(from, to)
 
 	for pq.Len() > 0 {
 		current := heap.Pop(pq).(*priorityQueueItem).coord
@@ -80,6 +81,9 @@ func (g *graph) getPath(from gridCoord, to gridCoord) ([]gridCoord, error) {
 
 		for _, dir := range directions {
 			next := gridCoord{x: current.x + dir.x, y: current.y + dir.y}
+			if next.x > limit.x || next.y > limit.y {
+				continue
+			}
 			if !g.isFreeInGrid(next) && !next.Equals(to) {
 				continue
 			}
@@ -95,6 +99,19 @@ func (g *graph) getPath(from gridCoord, to gridCoord) ([]gridCoord, error) {
 	}
 
 	return nil, fmt.Errorf("no path found")
+}
+
+// findSearchLimit is the farthest cell a path may visit: the extent of the
+// grid and both ends, plus a margin to route around the outermost nodes.
+func (g *graph) findSearchLimit(from, to gridCoord) gridCoord {
+	const margin = 2
+	limit := gridCoord{x: Max(from.x, to.x), y: Max(from.y, to.y)}
+	for c := range g.grid {
+		limit.x = Max(limit.x, c.x)
+		limit.y = Max(limit.y, c.y)
+	}
+
+	return gridCoord{x: limit.x + margin, y: limit.y + margin}
 }
 
 func (g *graph) isFreeInGrid(c gridCoord) bool {

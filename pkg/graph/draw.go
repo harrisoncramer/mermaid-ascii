@@ -250,21 +250,22 @@ func (g *graph) drawLine(d *drawing, from drawingCoord, to drawingCoord, offsetF
 }
 
 // Draw lays out and renders a parsed graph as text.
-func Draw(properties *Properties) string {
+func Draw(properties *Properties) (string, error) {
 	g := mkGraph(properties.data, properties.nodeSpecs)
 	g.setStyleClasses(properties)
 	g.paddingX = properties.paddingX
 	g.paddingY = properties.paddingY
 	g.useAscii = properties.useAscii
 	g.setSubgraphs(properties.subgraphs)
-	g.createMapping()
+	if err := g.createMapping(); err != nil {
+		return "", err
+	}
 	d := g.draw()
 	if properties.ShowCoords {
 		d = d.debugDrawingWrapper()
 		d = d.debugCoordWrapper(g)
 	}
-	s := drawingToString(d)
-	return s
+	return drawingToString(d), nil
 }
 
 func drawBox(n *node, g graph) *drawing {

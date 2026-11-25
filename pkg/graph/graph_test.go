@@ -25,11 +25,17 @@ func verifyMap(t *testing.T, testCaseFile string, useAscii bool) {
 	properties.paddingX = tc.PaddingX
 	properties.paddingY = tc.PaddingY
 	properties.useAscii = useAscii
-	actualMap := Draw(properties)
+	actualMap, err := Draw(properties)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if tc.MaxWidth > 0 && maxDisplayWidth(actualMap) > tc.MaxWidth {
 		properties.paddingX = 1
 		properties.paddingY = 1
-		actualMap = Draw(properties)
+		actualMap, err = Draw(properties)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 	if tc.Expected != actualMap {
 		expectedWithSpaces := testutil.VisualizeWhitespace(tc.Expected)

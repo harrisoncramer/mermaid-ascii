@@ -291,7 +291,7 @@ func renderGraph(src string, config *diagram.Config) (string, error) {
 		return "", err
 	}
 	p.Apply(config)
-	return Draw(p), nil
+	return Draw(p)
 }
 
 func TestRenderGraphHandlesAmpersandInsideNodeLabel(t *testing.T) {
